@@ -1,55 +1,39 @@
-import torch as pt
-from torch.nn import Conv2d, ConvTranspose2d, Module, ReLU
-import torch.nn as nn
+import pytorch_lightning as pl
+import torch
 import torch.nn.functional as F
+import torchmetrics as tm
+import numpy as np
+
+from backboned_unet import Unet
 
 
-class RefinerModel(Module):
-    def __init__(self):
-        super(RefinerModel, self).__init__()
-        self.conv1 = Conv2d(3, 32, kernel_size=(5,5))
-        self.conv2 = Conv2d(32, 64, kernel_size=(3,3))
-        self.conv3 = Conv2d(64, 128, kernel_size=(3,3))
-        self.convt1 = ConvTranspose2d(128, 64, kernel_size=(3,3))
-        self.convt2 = ConvTranspose2d(64, 32, kernel_size=(3,3))
-        self.convt3 = ConvTranspose2d(32, 16, kernel_size=(5,5))
-        self.output = Conv2d(16, 1, kernel_size=1)
-
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, kernel_size=2)
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.convt1(x))
-        x = F.interpolate(x, scale_factor=2)
-        x = F.relu(self.convt2(x))
-        x = F.interpolate(x, scale_factor=2)
-        x = F.relu(self.convt3(x))
-        x = self.output(x)
-        return x
-
-
-
-class RefinerModelRegression(Module):
-    def __init__(self):
-        super(RefinerModelRegression, self).__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=5)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3)
-        self.fc1 = nn.Linear(128, 2)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout2d(p=0.2)
+class UNet_Lightning(pl.LightningModule):
+    def __init__(self, metrics):
+        super().__init__()
+        self.classifier = Unet(backbone_name="resnet18", classes=2)
+        self.f1_score = tm.F1(num_classes=2)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = self.pool(x)
-        x = F.relu(self.conv2(x))
-        x = self.pool(x)
-        x = F.relu(self.conv3(x))
-        x = self.pool(x)
-        bs, _, _, _ = x.shape
-        x = F.adaptive_avg_pool2d(x, 1).reshape(bs, -1)
-        x = self.dropout(x)
-        out = self.fc1(x)
-        return out
+        return self.classifier(x)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        out = self.forward(x)
+        loss = F.cross_entropy(out, y.squeeze().long())
+        f1_score = self.f1_score(out, y.squeeze().long())
+        self.log("train_loss", loss)
+        self.log("train_f1", f1_score)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        out = self.forward(x)
+        loss = F.cross_entropy(out, y.squeeze().long())
+        F1 = self.f1_score(out, y.squeeze().long())
+        self.log("val_loss", loss)
+        self.log("val_f1", F1)
+        return loss

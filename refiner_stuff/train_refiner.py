@@ -14,29 +14,48 @@ from refiner_model import RefinerModel, RefinerModelRegression
 
 from fastai.vision.all import *
 
+bodyparts = [
+    "right_eye",
+    "left_eye",
+    "nose",
+    "head",
+    "neck",
+    "right_shoulder",
+    "right_elbow",
+    "right_wrist",
+    "left_shoulder",
+    "left_elbow",
+    "left_wrist",
+    "hip",
+    "right_knee",
+    "right_ankle",
+    "left_knee",
+    "left_ankle",
+    "tail"
+]
+
 
 if __name__ == "__main__":
 
     device = torch.device("cuda:2")
+    BODYPART = 2
     EPOCHS = 10
 
     with open("/media/storage2/open_monkey/monkey_train_annotations.json", "r") as fh:
-        annotations = json.load(fh)["data"]
+        train_annotations = json.load(fh)["data"]
 
-
-    dataset = OpenMonkeyChallengeCropDataset(
-        annotations=annotations,
+    train_dataset = OpenMonkeyChallengeCropDataset(
+        annotations=train_annotations,
         image_path=Path("/media/storage2/open_monkey/train"),
-        bodypart_idx=2,
+        bodypart_idx=BODYPART,
         crop_size=128,
         sigma=32,
         kernel_size=5
     )
 
-    #dataset.show_image(0)
 
-    dataloader = DataLoader(
-        dataset,
+    train_dataloader = DataLoader(
+        train_dataset,
         batch_size=16,
         shuffle=True,
         pin_memory=True,
@@ -45,24 +64,49 @@ if __name__ == "__main__":
         prefetch_factor=4
     )
 
-#    model = RefinerModel().to(device)
+    # #### Load Val Data ###
 
-    model = create_unet_model(arch=models.resnet18, img_size=(128,128), n_out=2, pretrained=True)
-    model.to(device)
+    # with open("/media/storage2/open_monkey/monkey_val_annotations.json", "r") as fh:
+    #     val_annotations = json.load(fh)["data"]
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = torch.nn.CrossEntropyLoss()
+    # val_dataset = OpenMonkeyChallengeCropDataset(
+    #     annotations=train_annotations,
+    #     image_path=Path("/media/storage2/open_monkey/val"),
+    #     bodypart_idx=BODYPART,
+    #     crop_size=128,
+    #     sigma=32,
+    #     kernel_size=5
+    # )
 
 
-    model.train()
-    for epoch in range(EPOCHS):
-        epoch_loss = 0
+    # val_dataloader = DataLoader(
+    #     val_dataset,
+    #     batch_size=16,
+    #     shuffle=True,
+    #     pin_memory=True,
+    #     drop_last=True,
+    #     num_workers=10,
+    #     prefetch_factor=4
+    # )
 
-        for x, y in tqdm(dataloader):
-            out = model(x.to(device))
-            optimizer.zero_grad()
-            loss = loss_fn(out, y.long().to(device))
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.data
-        print("Epoch: {}, train_loss: {}".format(epoch, epoch_loss/len(dataloader)))
+    model = Unet_Lightning()
+
+    ### Setup Callbacks ###
+    checkpoint_callback = ModelCheckpoint(
+        monitor="train_f1",
+        dirpath=CHECKPOINT_PATH,
+        filename=bodyparts[BODYPART] + "-{epoch:02d}-{train_f1:.2f}",
+        mode="max",
+    )
+
+
+    ### Train ###
+    trainer = pl.Trainer(
+        devices=torch.cuda.device_count(),
+        accelerator="gpu",
+        strategy="ddp",
+        max_epochs=5,
+        callbacks=[checkpoint_callback]
+    )
+
+    trainer.fit(model, train_dataloader)
