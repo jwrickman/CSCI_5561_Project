@@ -10,8 +10,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from refiner_pipeline import OpenMonkeyChallengeCropDataset
-from refiner_model import RefinerModel, RefinerModelRegression
-
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+from refiner_model import UNet_Lightning
 from fastai.vision.all import *
 
 bodyparts = [
@@ -39,10 +40,16 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:2")
     BODYPART = 2
+    CHECKPOINT_PATH = "~/open_monkey_experiments/"
     EPOCHS = 10
 
     with open("/media/storage2/open_monkey/monkey_train_annotations.json", "r") as fh:
-        train_annotations = json.load(fh)["data"]
+        annotations = json.load(fh)["data"]
+
+    random.shuffle(annotations)
+
+    train_annotations = annotations[:int( 0.2 * len(annotations))]
+    val_annotations = annotations[int( 0.8 * len(annotations)):]
 
     train_dataset = OpenMonkeyChallengeCropDataset(
         annotations=train_annotations,
@@ -56,7 +63,7 @@ if __name__ == "__main__":
 
     train_dataloader = DataLoader(
         train_dataset,
-        batch_size=16,
+        batch_size=48,
         shuffle=True,
         pin_memory=True,
         drop_last=True,
@@ -69,33 +76,33 @@ if __name__ == "__main__":
     # with open("/media/storage2/open_monkey/monkey_val_annotations.json", "r") as fh:
     #     val_annotations = json.load(fh)["data"]
 
-    # val_dataset = OpenMonkeyChallengeCropDataset(
-    #     annotations=train_annotations,
-    #     image_path=Path("/media/storage2/open_monkey/val"),
-    #     bodypart_idx=BODYPART,
-    #     crop_size=128,
-    #     sigma=32,
-    #     kernel_size=5
-    # )
+    val_dataset = OpenMonkeyChallengeCropDataset(
+        annotations=val_annotations,
+        image_path=Path("/media/storage2/open_monkey/train"),
+        bodypart_idx=BODYPART,
+        crop_size=128,
+        sigma=32,
+        kernel_size=5
+    )
 
 
-    # val_dataloader = DataLoader(
-    #     val_dataset,
-    #     batch_size=16,
-    #     shuffle=True,
-    #     pin_memory=True,
-    #     drop_last=True,
-    #     num_workers=10,
-    #     prefetch_factor=4
-    # )
+    val_dataloader = DataLoader(
+        val_dataset,
+        batch_size=48,
+        shuffle=False,
+        pin_memory=True,
+        drop_last=False,
+        num_workers=10,
+        prefetch_factor=4
+    )
 
-    model = Unet_Lightning()
+    model = UNet_Lightning()
 
     ### Setup Callbacks ###
     checkpoint_callback = ModelCheckpoint(
-        monitor="train_f1",
+        monitor="val_f1_score",
         dirpath=CHECKPOINT_PATH,
-        filename=bodyparts[BODYPART] + "-{epoch:02d}-{train_f1:.2f}",
+        filename=bodyparts[BODYPART] + "-{epoch:02d}-{val_f1_score:.2f}",
         mode="max",
     )
 
@@ -109,4 +116,4 @@ if __name__ == "__main__":
         callbacks=[checkpoint_callback]
     )
 
-    trainer.fit(model, train_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader)
