@@ -30,6 +30,7 @@ if __name__ == "__main__":
         bodypart_idx=2,
         crop_size=128,
         sigma=32,
+        kernel_size=5
     )
 
     #dataset.show_image(0)
@@ -46,11 +47,11 @@ if __name__ == "__main__":
 
 #    model = RefinerModel().to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = torch.nn.CrossEntropyLoss()
-
     model = create_unet_model(arch=models.resnet18, img_size=(128,128), n_out=2, pretrained=True)
     model.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    loss_fn = torch.nn.CrossEntropyLoss()
 
 
     model.train()
@@ -60,27 +61,8 @@ if __name__ == "__main__":
         for x, y in tqdm(dataloader):
             out = model(x.to(device))
             optimizer.zero_grad()
-            loss = loss_fn(out.squeeze(), y.to(device))
-
+            loss = loss_fn(out, y.long().to(device))
             loss.backward()
             optimizer.step()
             epoch_loss += loss.data
         print("Epoch: {}, train_loss: {}".format(epoch, epoch_loss/len(dataloader)))
-
-
-    # model.eval()
-    # for i in range(10):
-    #     img, target = dataset.get_crop_and_show(1)
-    #     out = model(torch.unsqueeze(img, 0).to(device))
-    #     out = out.squeeze().cpu().detach().numpy()
-    #     #plt.imshow(out)
-    #     #plt.scatter(x=out[0], y=out[1], c="blue")
-    #     #plt.scatter(x=out[1], y=out[0], c="green")
-    #     #plt.show()
-
-
-
-
-
-
-

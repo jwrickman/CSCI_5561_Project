@@ -1,6 +1,6 @@
 from PIL import Image
 from pathlib import Path
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, convolve
 import json
 import numpy as np
 from matplotlib import pyplot as plt
@@ -21,13 +21,15 @@ class OpenMonkeyChallengeCropDataset(Dataset):
                  image_path,
                  bodypart_idx,
                  crop_size,
-                 sigma):
+                 sigma=None,
+                 kernel_size=None):
         self.annotations = annotations
         self.image_path = Path(image_path)
         self.bodypart_idx = bodypart_idx
         self.crop_size = crop_size
         self.half_crop_size = crop_size // 2
         self.sigma = sigma
+        self.kernel_size = kernel_size
 
 
     def __len__(self):
@@ -35,10 +37,11 @@ class OpenMonkeyChallengeCropDataset(Dataset):
 
 
     def create_confidence_map(self, offset_xy):
-        mask = np.zeros((self.crop_size, self.crop_size), dtype=np.float64)
+        mask = np.zeros((self.crop_size, self.crop_size), dtype=int)
         mask[self.half_crop_size + -1 * offset_xy[1],self.half_crop_size + -1 * offset_xy[0]] = 1
-        mask = gaussian_filter(mask, self.sigma)
-        #mask = 1 / np.max(mask)
+#        mask = gaussian_filter(mask, self.sigma)
+        mask = convolve(mask, np.ones((self.kernel_size, self.kernel_size)))
+        mask[mask > 1] = 1
         return mask
 
 
@@ -113,7 +116,7 @@ class OpenMonkeyChallengeCropDataset(Dataset):
         plt.clf()
         plt.cla()
 
-        target_crop = torch.from_numpy(target_crop).float()
+        target_crop = torch.from_numpy(target_crop).long()
 
         return image_crop, target_crop
 
@@ -161,11 +164,11 @@ if __name__ == "__main__":
         annotations=annotations,
         image_path=Path("/media/storage2/open_monkey/train"),
         bodypart_idx=2,
-        crop_size=150,
+        crop_size=128,
         sigma=32,
     )
-    dataset.show_image(0)
-    dataset.get_crop_and_show(0)
+    #dataset.show_image(0)
+    #dataset.get_crop_and_show(0)
 
     """
     for i in range(10):
