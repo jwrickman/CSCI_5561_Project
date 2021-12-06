@@ -44,12 +44,12 @@ if __name__ == "__main__":
         prefetch_factor=4
     )
 
-    model = RefinerModel().to(device)
+#    model = RefinerModel().to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(2))
+    loss_fn = torch.nn.CrossEntropyLoss()
 
-    model = create_unet_model(arch=models.resnet18, img_size=(128,128), n_out=1, pretrained=True)
+    model = create_unet_model(arch=models.resnet18, img_size=(128,128), n_out=2, pretrained=True)
     model.to(device)
 
 
@@ -68,15 +68,15 @@ if __name__ == "__main__":
         print("Epoch: {}, train_loss: {}".format(epoch, epoch_loss/len(dataloader)))
 
 
-    model.eval()
-    for i in range(10):
-        img, target = dataset.get_crop_and_show(1)
-        out = model(torch.unsqueeze(img, 0).to(device))
-        out = out.squeeze().cpu().detach().numpy()
-        plt.imshow(out)
-        #plt.scatter(x=out[0], y=out[1], c="blue")
-        #plt.scatter(x=out[1], y=out[0], c="green")
-        plt.show()
+    # model.eval()
+    # for i in range(10):
+    #     img, target = dataset.get_crop_and_show(1)
+    #     out = model(torch.unsqueeze(img, 0).to(device))
+    #     out = out.squeeze().cpu().detach().numpy()
+    #     #plt.imshow(out)
+    #     #plt.scatter(x=out[0], y=out[1], c="blue")
+    #     #plt.scatter(x=out[1], y=out[0], c="green")
+    #     #plt.show()
 
 
 
