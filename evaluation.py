@@ -8,7 +8,7 @@ import json
 ANNOTATION_FILE = "/media/storage2/open_monkey/monkey_val_annotations.json"
 H5_FILE = "/media/storage2/open_monkey/val_data.h5"
 MODEL_FILE = "/media/storage2/open_monkey/checkpoints/Best_LEAP.h5"
-LOG_FILE = "/media/storage2/open_monkey/log.h5"
+LOG_FILE = "/media/storage2/open_monkey/log_deep.h5"
 
 def MPJPE(y_error):
     result = np.sqrt(np.sum(y_error ** 2, axis=2))
