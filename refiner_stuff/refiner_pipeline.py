@@ -22,7 +22,8 @@ class OpenMonkeyChallengeCropDataset(Dataset):
                  bodypart_idx,
                  crop_size,
                  sigma=None,
-                 kernel_size=None):
+                 kernel_size=None,
+                 test_mode=False):
         self.annotations = annotations
         self.image_path = Path(image_path)
         self.bodypart_idx = bodypart_idx
@@ -95,9 +96,6 @@ class OpenMonkeyChallengeCropDataset(Dataset):
         plt.clf()
         plt.cla()
 
-
-
-
         # Normalize image (imagenet)
 
         image_crop = image_crop / 255
@@ -128,7 +126,10 @@ class OpenMonkeyChallengeCropDataset(Dataset):
 
         keypoint_xy = np.array(sample["landmarks"]).reshape((17, 2))[self.bodypart_idx]
 
-        offset_xy = np.random.randint(-self.half_crop_size + 1, self.half_crop_size, (2))
+        if not(self.test_mode):
+            offset_xy = np.random.randint(-self.half_crop_size + 1, self.half_crop_size, (2))
+        else:
+            offset_xy = np.zeros((2))
 
         image_crop = np.array(self.crop_image(image, keypoint_xy + offset_xy))
 

@@ -1,10 +1,5 @@
 import torch
-
-
-
-
-
-
+import json
 
 
 def get_delta(out):
@@ -13,20 +8,18 @@ def get_delta(out):
     delta_y = prediction[1] - 64
     return (delta_x, delta_y)
 
-
-
-
 ### Get Initial Predictions ###
 
 ## This should be in a csv file of the same format as the challenge download
 
 
 
-predict_file = "open_monkey_predictions.csv"
+predictions_file = "open_monkey_predictions.csv"
 
-refined_predictions = "open_monkey_refined_predictions.csv"
+refined_predictions_file = "open_monkey_refined_predictions.csv"
 
-for bodypart in range(13):
+for bodypart in [2]:
+    print("Starting Refining: ", bodyparts[bodypart])
     dataset = OpenMonkeyChallengeCropDataset(
         annotations=annotations,
         image_path=Path("/media/storage2/open_monkey/train"),
@@ -35,16 +28,17 @@ for bodypart in range(13):
         test_mode=True
     )
 
-    model = # Load correct bodypart model
-
+    checkpoint = 'bodypart_{}_best.ckpt'.format(bodypart)
+    model = UNet_Lightning.load_from_checkpoint(checkpoint)
     for idx in range(len(dataset)):
         image = dataset.get_crop(idx)
-        ## Preprocess image??? ##
         out = model(image)
+        delta_x, delta_y = get_delta(out)
+        annotations[idx][landmarks][bodypart * 2] += delta_x
+        annotations[idx][landmarks][bodypart * 2 + 1] += delta_y
+        annotations[idx][corrections].append(delta_x)
+        annotations[idx][corrections].append(delta_y)
 
+    with open("save_corrections.json", "w") as fh:
+        json.dump(annotations, fh)
 
-
-# For body part in parts list
-## Crop to body part
-## Run corresponding predictor
-## Update Guess

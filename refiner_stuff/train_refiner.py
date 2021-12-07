@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:2")
     BODYPART = 2
-    CHECKPOINT_PATH = "~/open_monkey_experiments/"
+    CHECKPOINT_PATH = "open_monkey_experiments/"
     EPOCHS = 10
 
     with open("/media/storage2/open_monkey/monkey_train_annotations.json", "r") as fh:
