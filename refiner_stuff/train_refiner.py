@@ -48,8 +48,8 @@ if __name__ == "__main__":
 
     random.shuffle(annotations)
 
-    train_annotations = annotations[:int( 0.2 * len(annotations))]
-    val_annotations = annotations[int( 0.8 * len(annotations)):]
+    train_annotations = annotations[:int(0.8 * len(annotations))]
+    val_annotations = annotations[int(0.8 * len(annotations)):]
 
     train_dataset = OpenMonkeyChallengeCropDataset(
         annotations=train_annotations,
@@ -100,9 +100,9 @@ if __name__ == "__main__":
 
     ### Setup Callbacks ###
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_f1_score",
+        monitor="val_loss",
         dirpath=CHECKPOINT_PATH,
-        filename=bodyparts[BODYPART] + "-{epoch:02d}-{val_f1_score:.2f}",
+        filename=bodyparts[BODYPART] + "-{epoch:02d}-{val_loss:.2e}",
         mode="max",
     )
 

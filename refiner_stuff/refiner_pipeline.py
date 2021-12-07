@@ -37,11 +37,11 @@ class OpenMonkeyChallengeCropDataset(Dataset):
 
 
     def create_confidence_map(self, offset_xy):
-        mask = np.zeros((self.crop_size, self.crop_size), dtype=int)
+        mask = np.zeros((self.crop_size, self.crop_size), dtype=np.float32)
         mask[self.half_crop_size + -1 * offset_xy[1],self.half_crop_size + -1 * offset_xy[0]] = 1
-#        mask = gaussian_filter(mask, self.sigma)
-        mask = convolve(mask, np.ones((self.kernel_size, self.kernel_size)))
-        mask[mask > 1] = 1
+        mask = gaussian_filter(mask, self.sigma)
+#        mask = convolve(mask, np.ones((self.kernel_size, self.kernel_size)))
+#        mask[mask > 1] = 1
         return mask
 
 
